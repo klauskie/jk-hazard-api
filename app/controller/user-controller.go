@@ -1,13 +1,11 @@
 package controller
 
-
 import (
-	"klaus.com/jkapi/app/entity"
+	"encoding/json"
+	"errors"
 	"klaus.com/jkapi/app/repository"
 	"klaus.com/jkapi/app/service"
 	"log"
-	"encoding/json"
-	"errors"
 	"net/http"
 )
 
@@ -35,12 +33,22 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
+/*
 func GetUserByToken(token string) (entity.User, error) {
 	var user entity.User
-	key := service.GetSessionHandlerInstance().GetUserByKey(token)
-	if key == -1 {
+	key := service.GetSessionHandlerInstance().GetPlayerIDByKey(token)
+	if len(key) == 0 {
 		return user, errors.New("Error token not identified")
 	}
 	user = userRepo.FindById(key)
 	return user, nil
+}
+ */
+
+func GetPlayerKeyByToken(token string) (string, error) {
+	key := service.GetSessionHandlerInstance().GetPlayerIDByKey(token)
+	if len(key) == 0 {
+		return key, errors.New("Error token not identified")
+	}
+	return key, nil
 }

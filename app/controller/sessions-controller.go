@@ -1,19 +1,12 @@
 package controller
 
-import (
-	"klaus.com/jkapi/app/entity"
-	"klaus.com/jkapi/app/service"
-	"log"
-	"encoding/json"
-	"net/http"
-)
-
 type SimpleUser struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
 // POST: login
+/*
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -49,7 +42,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+ */
+
 // POST: signup
+/*
 func SignUp(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var tempUser SimpleUser
@@ -86,3 +82,5 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	service.GetSessionHandlerInstance().RemoveSession(token)
 	w.WriteHeader(http.StatusOK)
 }
+
+ */

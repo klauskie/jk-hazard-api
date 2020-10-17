@@ -6,6 +6,7 @@ import (
 	"klaus.com/jkapi/app/entity"
 	"klaus.com/jkapi/app/repository"
 	"klaus.com/jkapi/app/service"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -27,7 +28,7 @@ func GetAllRooms(w http.ResponseWriter, r *http.Request) {
 func GetRoom(w http.ResponseWriter, r *http.Request) {
 	// Auth
 	token := r.Header.Get("token")
-	_, err := GetUserByToken(token)
+	_, err := GetPlayerKeyByToken(token)
 	if err != nil {
 		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
 		return
@@ -49,7 +50,7 @@ func GetRoom(w http.ResponseWriter, r *http.Request) {
 func GetJudgeCards(w http.ResponseWriter, r *http.Request) {
 	// Auth
 	token := r.Header.Get("token")
-	_, err := GetUserByToken(token)
+	_, err := GetPlayerKeyByToken(token)
 	if err != nil {
 		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
 		return
@@ -73,35 +74,6 @@ func GetJudgeCards(w http.ResponseWriter, r *http.Request) {
 
 // POST: room
 func NewRoom(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	token := r.Header.Get("token")
-	key := service.GetSessionHandlerInstance().GetUserByKey(token)
-	if key == -1 {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "Error token not identified"}`))
-	}
-	user := userRepo.FindById(key)
-	player := entity.NewPlayer(user, true)
-	room := entity.NewRoom(player)
-	room.UpdateLastConnection(user)
-	repository.GetRoomRepository().Add(room)
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(room)
-}
-
-
-// PUT: room/join
-func JoinRoom(w http.ResponseWriter, r *http.Request) {
-	// Auth
-	token := r.Header.Get("token")
-	user, err := GetUserByToken(token)
-	if err != nil {
-		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
-		return
-	}
-
 	// Get roomTAG from body
 	result := make(map[string]string)
 	err1 := json.NewDecoder(r.Body).Decode(&result)
@@ -109,25 +81,69 @@ func JoinRoom(w http.ResponseWriter, r *http.Request) {
 		FillErrorHeaders(w, http.StatusInternalServerError, "Error unmarshalling error")
 		return
 	}
+
+	username := result["username"]
+
+	player := entity.NewPlayer(username, true)
+	room := entity.NewRoom(player)
+	room.UpdateLastConnection(player)
+	repository.GetRoomRepository().Add(room)
+
+	// Create new token
+	token := service.GetSessionHandlerInstance().AddNewSession(room.Host)
+	log.Println(room.Host.ID, token)
+
+	// Prepare Response
+	resp := make(map[string]interface{})
+	resp["token"] = token
+	resp["room"] = room
+
+	FillHeaders(w, http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
+}
+
+
+// PUT: room/join
+func JoinRoom(w http.ResponseWriter, r *http.Request) {
+	// Get roomTAG from body
+	result := make(map[string]string)
+	err1 := json.NewDecoder(r.Body).Decode(&result)
+	if err1 != nil {
+		FillErrorHeaders(w, http.StatusInternalServerError, "Error unmarshalling error")
+		return
+	}
+
 	tag := result["roomTag"]
-	player := entity.NewPlayer(user, false)
+	username := result["username"]
+
+	player := entity.NewPlayer(username, false)
 	err2 := repository.GetRoomRepository().Get(tag).JoinPlayer(player)
 	if err2 != nil {
 		FillErrorHeaders(w, http.StatusInternalServerError, err2.Error())
+		return
 	}
 
 	// Set connection time
-	repository.GetRoomRepository().Get(tag).UpdateLastConnection(user)
+	repository.GetRoomRepository().Get(tag).UpdateLastConnection(player)
+
+	// Create new token
+	token := service.GetSessionHandlerInstance().AddNewSession(player)
+
+	log.Println(repository.GetRoomRepository().Get(tag).Players.GetByUsername(username), token)
+
+	// Prepare Response
+	resp := make(map[string]string)
+	resp["token"] = token
 
 	FillHeaders(w, http.StatusOK)
-	json.NewEncoder(w).Encode(repository.GetRoomRepository().Get(tag))
+	json.NewEncoder(w).Encode(resp)
 }
 
 // PUT: room/{roomTAG}/send-card
 func UpdateCardsOnTrial(w http.ResponseWriter, r *http.Request) {
 	// Auth
 	token := r.Header.Get("token")
-	user, err := GetUserByToken(token)
+	key, err := GetPlayerKeyByToken(token)
 	if err != nil {
 		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
 		return
@@ -152,7 +168,7 @@ func UpdateCardsOnTrial(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get Player
-	player := room.GetPlayerByUsername(user.Username)
+	player,_ := room.Players.GetByKey(key)
 	if player.IsEmpty() {
 		FillErrorHeaders(w, http.StatusNotFound, "Error: cannot find player with given username.")
 		return
@@ -192,7 +208,7 @@ func SetRoundWinner(w http.ResponseWriter, r *http.Request) {
 	// TODO: Update room with provided player from the judge
 	// Auth
 	token := r.Header.Get("token")
-	user, err := GetUserByToken(token)
+	key, err := GetPlayerKeyByToken(token)
 	if err != nil {
 		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
 		return
@@ -208,7 +224,7 @@ func SetRoundWinner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get Player
-	judge := room.GetPlayerByUsername(user.Username)
+	judge, _ := room.Players.GetByKey(key)
 	if judge.IsEmpty() {
 		FillErrorHeaders(w, http.StatusNotFound, "Error: cannot find player with given username.")
 		return
@@ -257,7 +273,7 @@ func SetRoundWinner(w http.ResponseWriter, r *http.Request) {
 func HeartBeat(w http.ResponseWriter, r *http.Request) {
 	// Auth
 	token := r.Header.Get("token")
-	user, err := GetUserByToken(token)
+	key, err := GetPlayerKeyByToken(token)
 	if err != nil {
 		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
 		return
@@ -272,8 +288,10 @@ func HeartBeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	player, _ := room.Players.GetByKey(key)
+
 	// Update room with last connection difference
-	room.UpdateLastConnection(user)
+	room.UpdateLastConnection(player)
 
 
 	FillHeaders(w, http.StatusOK)
@@ -284,7 +302,7 @@ func HeartBeat(w http.ResponseWriter, r *http.Request) {
 func StartGame(w http.ResponseWriter, r *http.Request) {
 	// Auth
 	token := r.Header.Get("token")
-	user, err := GetUserByToken(token)
+	key, err := GetPlayerKeyByToken(token)
 	if err != nil {
 		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
 		return
@@ -299,8 +317,10 @@ func StartGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	player, _ := room.Players.GetByKey(key)
+
 	// Update room with last connection difference
-	room.UpdateLastConnection(user)
+	room.UpdateLastConnection(player)
 	room.InitPlayersHand()
 	room.Judge = room.Host
 

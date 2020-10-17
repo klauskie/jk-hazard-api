@@ -1,15 +1,18 @@
 package entity
 
+import "time"
 
 type Player struct {
-	UserData User
+	ID string
+	Username string
 	Score int
 	IsHost bool
 	Hand []Card
 }
 
-func NewPlayer(user User, isHost bool) Player {
-	player := Player{user, 0, isHost, []Card{}}
+func NewPlayer(username string, isHost bool) Player {
+	id := username + "-" + string(time.Now().UnixNano() / 1000000) // This is changed when the room is created or a player joins in [username-roomTAG]
+	player := Player{id, username, 0, isHost, []Card{}}
 	return player
 }
 
@@ -46,5 +49,9 @@ func (player *Player) AddToScore(num int) {
 }
 
 func (player *Player) IsEmpty() bool {
-	return player.UserData.IsEmpty()
+	return len(player.Username) == 0
+}
+
+func (player *Player) Equals(p2 Player) bool {
+	return player.Username == p2.Username
 }

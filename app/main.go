@@ -28,11 +28,11 @@ func main() {
 
 func initRoutes() {
 	router := mux.NewRouter()
-
+/*
 	router.HandleFunc("/api/login", controller.Login).Methods("POST")
 	router.HandleFunc("/api/logout", controller.Logout).Methods("GET")
 	router.HandleFunc("/api/signup", controller.SignUp).Methods("POST")
-
+ */
 	router.HandleFunc("/api/users", controller.GetAllUsers).Methods("GET")
 
 	router.HandleFunc("/api/rooms", controller.GetAllRooms).Methods("GET")
