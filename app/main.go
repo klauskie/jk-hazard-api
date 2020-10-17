@@ -44,6 +44,9 @@ func initRoutes() {
 	router.HandleFunc("/api/room/{roomTAG}/judge-cards", controller.GetJudgeCards).Methods("GET")
 	router.HandleFunc("/api/room/{roomTAG}/round-winner", controller.SetRoundWinner).Methods("PUT")
 	router.HandleFunc("/api/room/{roomTAG}/heart-beat", controller.HeartBeat).Methods("GET")
+	router.HandleFunc("/api/room/{roomTAG}/host", controller.GetHost).Methods("GET")
+	router.HandleFunc("/api/room/{roomTAG}/judge", controller.GetCurrentJudge).Methods("GET")
+	router.HandleFunc("/api/room/{roomTAG}/player", controller.GetPlayer).Methods("GET")
 
 	http.Handle("/", router)
 	fmt.Println("Starting up on 8080")

@@ -117,19 +117,22 @@ func JoinRoom(w http.ResponseWriter, r *http.Request) {
 	username := result["username"]
 
 	player := entity.NewPlayer(username, false)
-	err2 := repository.GetRoomRepository().Get(tag).JoinPlayer(player)
+	room := repository.GetRoomRepository().Get(tag)
+	err2 := room.JoinPlayer(player)
 	if err2 != nil {
 		FillErrorHeaders(w, http.StatusInternalServerError, err2.Error())
 		return
 	}
 
 	// Set connection time
-	repository.GetRoomRepository().Get(tag).UpdateLastConnection(player)
+	room.UpdateLastConnection(player)
 
 	// Create new token
 	token := service.GetSessionHandlerInstance().AddNewSession(player)
 
-	log.Println(repository.GetRoomRepository().Get(tag).Players.GetByUsername(username), token)
+	player, _ = room.Players.GetByUsername(username)
+
+	log.Println(player, token)
 
 	// Prepare Response
 	resp := make(map[string]string)
@@ -327,6 +330,90 @@ func StartGame(w http.ResponseWriter, r *http.Request) {
 
 	FillHeaders(w, http.StatusOK)
 	json.NewEncoder(w).Encode(room)
+}
+
+// GET: /api/room/{roomTAG}/host
+func GetHost(w http.ResponseWriter, r *http.Request) {
+	// Auth
+	token := r.Header.Get("token")
+	_, err := GetPlayerKeyByToken(token)
+	if err != nil {
+		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
+		return
+	}
+
+	params := mux.Vars(r)
+	tag := params["roomTAG"]
+
+	room := repository.GetRoomRepository().Get(tag)
+	if room == nil {
+		FillErrorHeaders(w, http.StatusNotFound, "Error: cannot find room with given tag.")
+		return
+	}
+
+
+	// Result Map
+	results := make(map[string]interface{})
+	results["host"] = room.Host
+
+	FillHeaders(w, http.StatusOK)
+	json.NewEncoder(w).Encode(results)
+}
+
+// GET: /api/room/{roomTAG}/judge
+func GetCurrentJudge(w http.ResponseWriter, r *http.Request) {
+	// Auth
+	token := r.Header.Get("token")
+	_, err := GetPlayerKeyByToken(token)
+	if err != nil {
+		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
+		return
+	}
+
+	params := mux.Vars(r)
+	tag := params["roomTAG"]
+
+	room := repository.GetRoomRepository().Get(tag)
+	if room == nil {
+		FillErrorHeaders(w, http.StatusNotFound, "Error: cannot find room with given tag.")
+		return
+	}
+
+	// Result Map
+	results := make(map[string]interface{})
+	results["judge"] = room.Judge
+
+	FillHeaders(w, http.StatusOK)
+	json.NewEncoder(w).Encode(results)
+}
+
+// GET: /api/room/{roomTAG}/player
+func GetPlayer(w http.ResponseWriter, r *http.Request) {
+	// Auth
+	token := r.Header.Get("token")
+	key, err := GetPlayerKeyByToken(token)
+	if err != nil {
+		FillErrorHeaders(w, http.StatusUnauthorized, "Error token not identified")
+		return
+	}
+
+	params := mux.Vars(r)
+	tag := params["roomTAG"]
+
+	room := repository.GetRoomRepository().Get(tag)
+	if room == nil {
+		FillErrorHeaders(w, http.StatusNotFound, "Error: cannot find room with given tag.")
+		return
+	}
+
+	player, _ := room.Players.GetByKey(key)
+
+	// Result Map
+	results := make(map[string]interface{})
+	results["player"] = player
+
+	FillHeaders(w, http.StatusOK)
+	json.NewEncoder(w).Encode(results)
 }
 
 func FillHeaders(w http.ResponseWriter, status int) {

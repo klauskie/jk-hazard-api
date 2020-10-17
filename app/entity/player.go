@@ -1,6 +1,9 @@
 package entity
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 type Player struct {
 	ID string
@@ -11,7 +14,7 @@ type Player struct {
 }
 
 func NewPlayer(username string, isHost bool) Player {
-	id := username + "-" + string(time.Now().UnixNano() / 1000000) // This is changed when the room is created or a player joins in [username-roomTAG]
+	id := username + "-" + strconv.FormatInt(time.Now().UnixNano() / 1000000, 10) // This is changed when the room is created or a player joins in [username-roomTAG]
 	player := Player{id, username, 0, isHost, []Card{}}
 	return player
 }

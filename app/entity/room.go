@@ -131,6 +131,7 @@ func (room *Room) InitPlayersHand () {
 }
 
 func createTag() string {
+	rand.Seed(time.Now().UnixNano())
 	buff := bytes.NewBufferString("")
 	for i := 0; i < 4; i++ {
 		letter := rand.Intn(90 - 65) + 65

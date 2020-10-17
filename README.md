@@ -28,6 +28,12 @@ Every request must contain the header key, Token and a valid token string provid
 
 >GET /api/room/{roomTAG}/heart-beat
 
+>GET /api/room/{roomTAG}/host
+
+>GET /api/room/{roomTAG}/judge
+
+>GET /api/room/{roomTAG}/player
+
 ## Details
 
 > POST /api/rooms : New Room
