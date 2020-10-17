@@ -132,7 +132,7 @@ func JoinRoom(w http.ResponseWriter, r *http.Request) {
 
 	player, _ = room.Players.GetByUsername(username)
 
-	log.Println(player, token)
+	log.Println(player.ID, token)
 
 	// Prepare Response
 	resp := make(map[string]string)
